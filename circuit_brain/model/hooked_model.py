@@ -22,33 +22,26 @@ torch.set_grad_enabled(False)
 
 class BrainAlignedLMModel:
     def __init__(self, hf_model_id):
-        self.model = HookedTransformer.from_pretrained(hf_model_id)
+        self.ht = HookedTransformer.from_pretrained(hf_model_id)
 
     def to_tokens(self, sentences: List[str]):
-        return self.model.to_tokens(sentences)
+        return self.ht.to_tokens(sentences)
 
     def to_string(self, tokens: List[int]):
-        return self.model.to_string(tokens)
+        return self.ht.to_string(tokens)
 
     def resid_post(
         self,
-        tokens: List[int],
+        cache: ActivationCache,
         avg: bool = True,
         chunk: bool = False,
         chunk_size: int = 4,
         apply_ln: bool = True,
     ):
-        """Runs the model on the given tokens and return all of the activations
-        after the residual connection. If `avg=True`, then for each layer, we
-        average across the token dimension. Otherwise, if `chunk=True`, we block
-        the tokens according to the `chunk_size`, average the embeddings within
-        each chunk and then concatenate these embeddings together. If
-        `apply_ln=True`, then normalize."""
         if avg and chunk:
             raise ValueError(
                 "Pooling schemes average and chunking cannot be used at the same time!"
             )
-        logits, cache = self.model.run_with_cache(tokens)
         accum_resid = cache.accumulated_resid(
             apply_ln=apply_ln
         )  # layer, batch, pos, d_model

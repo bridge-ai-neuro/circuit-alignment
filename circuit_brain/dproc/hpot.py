@@ -1,10 +1,9 @@
 from typing import List
 
-from base import fMRIDataset
+from .base import fMRIDataset
 
 import numpy as np
 from pathlib import Path
-from sklearn.model_selection import KFold
 
 
 class HarryPotterfMRI(fMRIDataset):
@@ -31,6 +30,12 @@ class HarryPotterfMRI(fMRIDataset):
         self.subjects = [
             np.load(self.fmri_dir / f"data_subject_{i}.npy") for i in self.subject_idxs
         ]
+
+        # normalize subject recordings
+        for i in range(len(self.subjects)):
+            self.subjects[i] = (
+                self.subjects[i] - np.mean(self.subjects[i], axis=0)
+            ) / np.std(self.subjects[i], axis=0)
 
         # for each fMRI measurement find its word context according to window size
         self.fmri_contexts = []

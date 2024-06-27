@@ -1,9 +1,10 @@
-import argparse
+import circuit_brain.utils as utils
+from circuit_brain.model import BrainAlignedLMModel
+from circuit_brain.dproc import fMRIDataset
 
-import torch
-import numpy as np
-import pandas as pd
-from transformers import AutoTokenizer, AutoModelWithLMHead
-from scipy.stats import zscore, pearsonr
-from sklearn.linear_model import Ridge
-from sklearn.model_selection import StratifiedKFold
+
+m = BrainAlignedLMModel("gpt2-small")
+das = fMRIDataset.get_dataset("das", "data/DS_data")
+hp = fMRIDataset.get_dataset("hp", "data/HP_data", window_size=20)
+
+# run all sentences from
