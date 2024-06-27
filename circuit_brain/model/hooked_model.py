@@ -15,6 +15,7 @@ from transformer_lens import (
     FactoredMatrix,
     ActivationCache,
 )
+from rich.progress import track
 
 
 torch.set_grad_enabled(False)
@@ -30,6 +31,28 @@ class BrainAlignedLMModel:
     def to_string(self, tokens: List[int]):
         return self.ht.to_string(tokens)
 
+    def run_with_cache(self, tokens, batch_size=8):
+        tok_batch = tokens.chunk(len(tokens) // batch_size)
+
+        logits = []
+        caches = []
+
+        for toks in track(tok_batch, description="Infer w/ cache..."):
+            l, c = self.ht.run_with_cache(toks)
+            l, c = l.to("cpu"), c.to("cpu")  # free gpu memory
+            logits.append(l)
+            caches.append(c)
+
+        agg_logits = torch.cat(logits, dim=0)
+        agg_cache_dict = {}
+        for k in caches[0].keys():
+            agg_cache_dict[k] = torch.cat([c[k] for c in caches], dim=0)
+
+        agg_cache = ActivationCache(agg_cache_dict, self.ht)
+
+        return agg_logits, agg_cache 
+
+        
     def resid_post(
         self,
         cache: ActivationCache,
