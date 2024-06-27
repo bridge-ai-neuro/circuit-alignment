@@ -50,9 +50,8 @@ class BrainAlignedLMModel:
 
         agg_cache = ActivationCache(agg_cache_dict, self.ht)
 
-        return agg_logits, agg_cache 
+        return agg_logits, agg_cache
 
-        
     def resid_post(
         self,
         cache: ActivationCache,

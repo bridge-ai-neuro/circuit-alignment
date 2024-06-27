@@ -1,1 +1,1 @@
-from .ridge_tools import *
+from .ridge_utils import *
