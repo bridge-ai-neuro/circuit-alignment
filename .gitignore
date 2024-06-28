@@ -1,3 +1,7 @@
+# Pickle files and other data files
+*.pkl
+*.npy
+
 # Vim swap files
 *.swp
 
