@@ -8,10 +8,14 @@ from circuit_brain.dproc import fMRIDataset
 import numpy as np
 from rich.progress import track
 from sklearn.decomposition import PCA
+from sklearn.linear_model import RidgeCV
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model-name", type=str, required=True, help="hf_id of model")
+parser.add_argument(
+    "--batch-size", type=int, required=True, help="batch size during inference"
+)
 options = parser.parse_args()
 
 
@@ -33,8 +37,8 @@ def per_subject_alignment(subject_kfold, repr_cache=dict()):
             train_toks = m.to_tokens(train_sents)
             test_toks = m.to_tokens(test_sents)
 
-            _, train_cache = m.run_with_cache(train_toks)
-            _, test_cache = m.run_with_cache(test_toks)
+            _, train_cache = m.run_with_cache(train_toks, batch_size=options.batch_size)
+            _, test_cache = m.run_with_cache(test_toks, batch_size=options.batch_size)
 
             train_repr = m.resid_post(train_cache)
             test_repr = m.resid_post(test_cache)
@@ -44,12 +48,17 @@ def per_subject_alignment(subject_kfold, repr_cache=dict()):
             range(len(train_repr)), description=f"f{k+1} Align across layers..."
         ):
             # pca = PCA(n_components=100)
+            rcv = RidgeCV(
+                alphas=(1e-6, 1e-5, 1e-4, 1e-3, 1e-2),
+                alpha_per_target=True,
+                fit_intercept=False,
+            )
             train_repr_l, test_repr_l = train_repr[l].numpy(), test_repr[l].numpy()
             # weights, _ = utils.cross_val_ridge(pca.fit_transform(train_repr_l), train_fmri)
-            weights, _ = utils.cross_val_ridge(train_repr_l, train_fmri)
+            rcv.fit(train_repr_l, train_fmri)
             # print("%Explained variance:", np.sum(pca.explained_variance_ratio_))
             layer_r2.append(
-                utils.R2r((test_repr_l).dot(weights), test_fmri)
+                rcv.score(test_repr_l, test_fmri)
                 # utils.R2r(pca.transform(test_repr_l).dot(weights), test_fmri)
             )
         fold_r2.append(layer_r2)
@@ -64,4 +73,7 @@ for sidx in range(len(hp)):
     else:
         sidx_r2, cache = per_subject_alignment(hp_folds(sidx), cache)
     subject_r2.append(sidx_r2)
-pickle.dump(subject_r2, open(f"{options.model_name}-base-alignment.pkl", "wb+"))
+pickle.dump(
+    subject_r2,
+    open(f"data/base_align_data/{options.model_name}-base-alignment.pkl", "wb+"),
+)
