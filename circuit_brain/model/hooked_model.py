@@ -31,6 +31,23 @@ class BrainAlignedLMModel:
     def to_string(self, tokens: List[int]):
         return self.ht.to_string(tokens)
 
+    def hidden_repr(self, tokens, batch_size=8, normalize=True):
+        """Gets the hidden representations of `tokens` in the model.
+        Output dimension: [layers, batch size, d_model]
+        """
+        tok_batch = tokens.chunk(len(tokens) // batch_size)
+        reprs = []
+        for toks in track(tok_batch, description="Infer w/ cache..."):
+            l, c = self.ht.run_with_cache(toks)
+            reprs.append(self.resid_post(c))
+            del c
+        reprs = torch.cat(reprs, dim=1)
+        if normalize:
+            bf = reprs.transpose(1,0)
+            bf = (bf - torch.mean(bf, axis=0)) / torch.std(bf, axis=0) 
+            return bf.transpose(1,0)
+        return reprs
+
     def run_with_cache(self, tokens, batch_size=8):
         tok_batch = tokens.chunk(len(tokens) // batch_size)
 

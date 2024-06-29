@@ -1,3 +1,4 @@
+import sys
 import pickle
 import argparse
 
@@ -5,75 +6,73 @@ import circuit_brain.utils as utils
 from circuit_brain.model import BrainAlignedLMModel
 from circuit_brain.dproc import fMRIDataset
 
+import torch
 import numpy as np
 from rich.progress import track
 from sklearn.decomposition import PCA
 from sklearn.linear_model import RidgeCV
 
 
+torch.set_grad_enabled(False)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model-name", type=str, required=True, help="hf_id of model")
 parser.add_argument(
     "--batch-size", type=int, required=True, help="batch size during inference"
 )
+parser.add_argument(
+    "--only-store-repr", action="store_true", default=False,
+    help="don't compute alignment only store representations"
+)
+parser.add_argument(
+    "--repr_fname", type=str, required=False,
+    help="file name for all representations"
+)
+parser.add_argument(
+    "--window-size", type=int, required=True,
+    help="context window for each fmri recording"
+)
+parser.add_argument(
+    "--remove-format-chars", default=False, action="store_true",
+    help="remove formatting characters in text"
+)
+parser.add_argument(
+    "--remove-punc-spacing", default=False, action="store_true",
+    help="remove punctuation spacing in text"
+)
+parser.add_argument(
+    "--uniform-lam", default=False, action="store_true",
+    help="do not use lam per voxel"
+)
 options = parser.parse_args()
 
 
-m = BrainAlignedLMModel(options.model_name)
-das = fMRIDataset.get_dataset("das", "data/DS_data")
-hp = fMRIDataset.get_dataset("hp", "data/HP_data", window_size=20)
-
-# check brain alignment on hp dataset
-hp_folds = hp.kfold(5, 5)
-
-
-def per_subject_alignment(subject_kfold, repr_cache=dict()):
-    use_cache = False if len(repr_cache.keys()) == 0 else True
-    fold_r2 = []
-    for k, (test_sents, test_fmri), (train_sents, train_fmri) in subject_kfold:
-        if use_cache:
-            train_repr, test_repr = repr_cache[k]
-        else:
-            train_toks = m.to_tokens(train_sents)
-            test_toks = m.to_tokens(test_sents)
-
-            _, train_cache = m.run_with_cache(train_toks, batch_size=options.batch_size)
-            _, test_cache = m.run_with_cache(test_toks, batch_size=options.batch_size)
-
-            train_repr = m.resid_post(train_cache)
-            test_repr = m.resid_post(test_cache)
-            repr_cache[k] = (train_repr, test_repr)
-        layer_r2 = []
-        for l in track(
-            range(len(train_repr)), description=f"f{k+1} Align across layers..."
-        ):
-            # pca = PCA(n_components=100)
-            rcv = RidgeCV(
-                alphas=(1e-6, 1e-5, 1e-4, 1e-3, 1e-2),
-                alpha_per_target=True,
-                fit_intercept=False,
-            )
-            train_repr_l, test_repr_l = train_repr[l].numpy(), test_repr[l].numpy()
-            # weights, _ = utils.cross_val_ridge(pca.fit_transform(train_repr_l), train_fmri)
-            rcv.fit(train_repr_l, train_fmri)
-            # print("%Explained variance:", np.sum(pca.explained_variance_ratio_))
-            layer_r2.append(
-                rcv.score(test_repr_l, test_fmri)
-                # utils.R2r(pca.transform(test_repr_l).dot(weights), test_fmri)
-            )
-        fold_r2.append(layer_r2)
-    return fold_r2, repr_cache
-
-
-subject_r2 = []
-cache = dict()
-for sidx in range(len(hp)):
-    if sidx == 0:
-        sidx_r2, cache = per_subject_alignment(hp_folds(sidx))
+if __name__ == "__main__":
+    m = BrainAlignedLMModel(options.model_name)
+    hp = fMRIDataset.get_dataset(
+        "hp",
+        "data/HP_data",
+        window_size=options.window_size,
+        remove_format_chars=options.remove_format_chars,
+        remove_punc_spacing=options.remove_punc_spacing
+    )
+    ff = f"{int(options.remove_format_chars)}{int(options.remove_punc_spacing)}"
+    if options.repr_fname is None:
+        model_repr = utils.per_subject_model_repr(hp.fmri_contexts, m, options.batch_size) 
     else:
-        sidx_r2, cache = per_subject_alignment(hp_folds(sidx), cache)
-    subject_r2.append(sidx_r2)
-pickle.dump(
-    subject_r2,
-    open(f"data/base_align_data/{options.model_name}-base-alignment.pkl", "wb+"),
-)
+        model_repr = pickle.load(open(options.repr_fname, "rb"))
+
+    if options.only_store_repr:
+        pickle.dump(
+            subject_model_repr,
+            open(f"data/base_align_data/{options.model_name}-repr.pkl", "wb+")
+        )
+        sys.exit(0)
+    
+    # compute brain-alignment scores
+    print(options.uniform_lam)
+    ridge_cv = utils.RidgeCV(n_splits=5, lam_per_target=not options.uniform_lam)
+    pickle.dump(
+        utils.across_subject_alignment(hp, model_repr, 5, 10, ridge_cv),
+        open(f"data/base_align_data/{options.model_name}-br2-{ff}.pkl", "wb+"),
+    )

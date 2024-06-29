@@ -8,7 +8,9 @@ def get_dataset(dataset_id, ddir, **kwargs):
         assert (
             kwargs.get("window_size", None) is not None
         ), "Must provide window size for Harry Potter dataset!"
-        return HarryPotterfMRI(ddir, kwargs["window_size"])
+        remove_format_chars = kwargs.get("remove_format_chars", False)
+        remove_punc_spacing = kwargs.get("remove_punc_spacing", False)
+        return HarryPotterfMRI(ddir, kwargs["window_size"], remove_format_chars, remove_punc_spacing)
     elif dataset_id == "das":
         return DAS(ddir)
     else:

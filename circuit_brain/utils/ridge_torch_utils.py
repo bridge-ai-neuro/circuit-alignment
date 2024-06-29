@@ -33,7 +33,20 @@ def ridge_lam_per_target(x, y, x_val, y_val, lams=[1e-4, 1e-3]):
     return error
 
 
-def cross_val_ridge(x_train, y_train, n_splits=5, lams=[1e-3, 1e-4, 1e-5]):
+def cv_ridge(x_train, y_train, n_splits=5, lams=[1e-3, 1e-4, 1e-5]):
+    kf = KFold(n_splits=n_splits)
+    error = torch.zeros(len(lams), device=x_train.device)
+    for f, (t_idx, v_idx) in enumerate(kf.split(y_train)):
+        fx_train, fy_train = x_train[t_idx], y_train[t_idx]
+        fx_val, fy_val = x_train[t_idx], y_train[t_idx]
+        for l, lam in enumerate(lams):
+            w = ridge(fx_train, fy_train, lam)
+            error[l] += torch.sum(1 - r2_score(torch.matmul(fx_val, w), fy_val))
+    min_lam = torch.argmin(error)
+    return ridge(x_train, y_train, lams[min_lam])
+
+
+def cv_ridge_lam_per_target(x_train, y_train, n_splits=5, lams=[1e-3, 1e-4, 1e-5]):
     r_cv = torch.zeros(len(lams), y_train.shape[1], device=y_train.device)
     kf = KFold(n_splits=n_splits)
     for f, (t_idx, v_idx) in enumerate(kf.split(y_train)):

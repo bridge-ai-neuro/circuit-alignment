@@ -11,7 +11,7 @@ class HarryPotterfMRI(fMRIDataset):
     subject_idxs = ["F", "H", "I", "J", "K", "L", "M", "N"]
 
     def __init__(
-        self, ddir, window_size, remove_format_chars=True, remove_punc_spacing=True
+        self, ddir, window_size, remove_format_chars=False, remove_punc_spacing=False
     ):
         self.window_size = window_size
         self.ddir = Path(ddir)
@@ -45,7 +45,7 @@ class HarryPotterfMRI(fMRIDataset):
         for mri_time in self.fmri_timing:
             f = filter(lambda x: x[0] <= mri_time, zip(self.word_timing, self.words))
             m = map(lambda x: x[1], f)
-            self.fmri_contexts.append(" ".join(list(m)[-self.window_size :]))
+            self.fmri_contexts.append(" ".join(list(m)[-self.window_size:]))
 
         if remove_format_chars:
             self.fmri_contexts = list(
@@ -74,7 +74,7 @@ class HarryPotterfMRI(fMRIDataset):
         return len(self.subjects)
 
     def __getitem__(self, idx):
-        return self.subjects[idx], self.words
+        return self.subjects[idx]
 
     def kfold(self, folds: int, trim: int):
         print(
@@ -85,26 +85,19 @@ class HarryPotterfMRI(fMRIDataset):
         fold_size = len(self.fmri_timing) // folds
         assert 2 * trim <= fold_size
 
-        def kfold_subject(idx):
-            subject = self.subjects[idx]
-            for f in range(folds):
-                if f == 0:
-                    start = 0
-                else:
-                    start = trim + fold_size * f
-                if f == folds - 1:
-                    end = len(self.fmri_timing)
-                else:
-                    end = fold_size * (f + 1) - trim
+        for f in range(folds):
+            if f == 0:
+                start = 0
+            else:
+                start = trim + fold_size * f
+            if f == folds - 1:
+                end = len(self.fmri_timing)
+            else:
+                end = fold_size * (f + 1) - trim
 
-                train_st = max(start - trim, 0)
-                train_ed = min(end + trim, len(self.fmri_timing))
+            train_st = max(start - trim, 0)
+            train_ed = min(end + trim, len(self.fmri_timing))
 
-                yield f, (self.fmri_contexts[start:end], subject[start:end]), (
-                    np.concatenate(
-                        [self.fmri_contexts[:train_st], self.fmri_contexts[train_ed:]]
-                    ),
-                    np.concatenate([subject[:train_st], subject[train_ed:]]),
-                )
-
-        return kfold_subject
+            yield f, list(range(start, end)), list(range(0, train_st)) + list(
+                range(train_ed, len(self.fmri_timing))
+            )
