@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 """
-This is code taken directly from https://github.com/TransformerLensOrg/TransformerLens/blob/main/transformer_lens/patching.py
+This is code taken directly from [here](https://github.com/TransformerLensOrg/TransformerLens/blob/main/transformer_lens/patching.py) with slight modifications to the patching metric.
 
-with slight modifications to the patching metric.
-"""
-"""Patching.
+Patching.
 
 A module for patching activations in a transformer model, and measuring the effect of the patch on
 the output. This implements the activation patching technique for a range of types of activation.

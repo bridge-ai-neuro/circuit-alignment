@@ -11,13 +11,14 @@ def per_subject_model_repr(sents, model, batch_size):
 def per_subject_alignment(dataset, model_repr, subject_idx, folds, trim, ridge_cv):
     fold_r2 = []
     for k, test_idx, train_idx in track(
-        dataset.kfold(folds, trim),
-        description=f"S{subject_idx+1}",
-        total=folds
+        dataset.kfold(folds, trim), description=f"S{subject_idx+1}", total=folds
     ):
         layer_r2 = []
-        train_repr, test_repr = model_repr[:,train_idx,:], model_repr[:,test_idx,:]
-        train_fmri, test_fmri = dataset[subject_idx][train_idx,:], dataset[subject_idx][test_idx,:] 
+        train_repr, test_repr = model_repr[:, train_idx, :], model_repr[:, test_idx, :]
+        train_fmri, test_fmri = (
+            dataset[subject_idx][train_idx, :],
+            dataset[subject_idx][test_idx, :],
+        )
         train_fmri = torch.from_numpy(train_fmri).float()
         test_fmri = torch.from_numpy(test_fmri).float()
         for l in range(len(train_repr)):
@@ -28,6 +29,7 @@ def per_subject_alignment(dataset, model_repr, subject_idx, folds, trim, ridge_c
         fold_r2.append(layer_r2)
     print(f"s{subject_idx}-alignment: {np.mean(fold_r2, (0,1))}")
     return fold_r2
+
 
 def across_subject_alignment(dataset, model_repr, folds, trim, ridge_cv):
     return [

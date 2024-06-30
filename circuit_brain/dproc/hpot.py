@@ -8,11 +8,47 @@ from pathlib import Path
 
 
 class HarryPotterfMRI(fMRIDataset):
+    """Harry Potter dataset from *Simultaneously Uncovering the Patterns of
+    Brain Regions Involved in Different Story
+    Reading Subprocesses* by Wehbe et al. (2014). The dataset contains eight
+    subjects and each subject is read Chapter 9 from *Harry
+    Potter and the Sorcerer’s Stone*.
+
+    The preprocessed data can be downloaded from
+    [here](https://drive.google.com/drive/folders/1Q6zVCAJtKuLOh-zWpkS3lH8LBvHcEOE8).
+    Every subject's fMRI recording is normalized across time for each voxel.
+    Subjects are shown the stimuli word-by-word
+    at intervals of 0.5 seconds. Text formatting such as italics or newline characters
+    are displayed to the participants separately as `@` and `+`, respectively.
+    """
+
+    dataset_id = "hp"
     subject_idxs = ["F", "H", "I", "J", "K", "L", "M", "N"]
 
     def __init__(
-        self, ddir, window_size, remove_format_chars=False, remove_punc_spacing=False
+        self,
+        ddir: str,
+        window_size: int,
+        remove_format_chars: bool = False,
+        remove_punc_spacing: bool = False,
     ):
+        """Initializes the dataset. This method should not be called directly. Instead,
+        one should use the factory method in the `fMRIDataset` class.
+
+        Args:
+            ddir: Path to the downloaded data directory. It is assumed that the
+                subdirectory structure and file naming follows
+                [here](https://drive.google.com/drive/folders/1Q6zVCAJtKuLOh-zWpkS3lH8LBvHcEOE8).
+            window_size: For a given fMRI measurement, the number of previous words
+                that are assumed to be a part of this fMRI's context.
+            remove_format_chars: Whether or not to remove the special formatting
+                characters that were displayed to participants such as `@` and `+`.
+            remove_punc_spacing: Punctuation such as ellipses `...` or em-dashes
+                `—` were displayed as `. . .` (period-by-period) and ` --- `,
+                respectively, to participants. If this flag is true, punctuation is
+                reformatted to what is conventional (i.e. `...` and `—` with no spaces
+                around it).
+        """
         self.window_size = window_size
         self.ddir = Path(ddir)
         self.fmri_dir = self.ddir / "fMRI"
@@ -45,7 +81,7 @@ class HarryPotterfMRI(fMRIDataset):
         for mri_time in self.fmri_timing:
             f = filter(lambda x: x[0] <= mri_time, zip(self.word_timing, self.words))
             m = map(lambda x: x[1], f)
-            self.fmri_contexts.append(" ".join(list(m)[-self.window_size:]))
+            self.fmri_contexts.append(" ".join(list(m)[-self.window_size :]))
 
         if remove_format_chars:
             self.fmri_contexts = list(
@@ -71,12 +107,33 @@ class HarryPotterfMRI(fMRIDataset):
                 )
 
     def __len__(self):
+        """Gets the total number of subjects."""
         return len(self.subjects)
 
     def __getitem__(self, idx):
+        """Given the index of the subject get their corresponding fMRI recording."""
         return self.subjects[idx]
 
     def kfold(self, folds: int, trim: int):
+        """A generator that yields `folds` number of training/test folds while trimming
+        off `trim` number of samples at the ends of the training folds.
+
+        Note that since all subjects are using the same stimuli, the generator is
+        subject-independent as all subjects share the same measurement indices.
+
+        Args:
+            folds: The number of folds.
+            trim: The number of samples to remove from either end of the training and
+                test folds.
+
+        Yields:
+            A tuple of the index of the current fold, the indices of the test examples,
+            and the indices of the training examples.
+
+        Raises:
+            AssertionError: If the number of trimmed samples is greater than the total
+                number of examples in the test fold.
+        """
         print(
             f"There are {len(self.fmri_timing)} fMRI measurements available.",
             f"Splitting {folds} folds means roughly {len(self.fmri_timing) // folds}",

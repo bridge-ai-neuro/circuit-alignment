@@ -6,7 +6,13 @@ import circuit_brain.utils.ridge_np_utils as rnu
 
 
 class RidgeCV:
-    def __init__(self, lam_per_target=True,n_splits=10,lams=[10 ** i for i in range(-5,10)],device="cuda"):
+    def __init__(
+        self,
+        lam_per_target=True,
+        n_splits=10,
+        lams=[10**i for i in range(-5, 10)],
+        device="cuda",
+    ):
         assert device in ["cpu", "cuda"], "Device must be either 'cpu' or 'cuda'."
         self.n_splits = n_splits
         self.lams = lams

@@ -1,4 +1,4 @@
-from base import fMRIDataset
+from .base import fMRIDataset
 
 import h5py
 import numpy as np
