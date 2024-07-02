@@ -1,5 +1,11 @@
 circuit\_brain.dproc
 ============================
+
+.. automodule:: circuit_brain.dproc
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 circuit\_brain.dproc.fMRIDataset
 ----------------------------------
 
@@ -8,10 +14,10 @@ circuit\_brain.dproc.fMRIDataset
    :undoc-members:
    :show-inheritance:
 
-circuit\_brain.dproc.HarryPotterfMRI
+circuit\_brain.dproc.HarryPotter
 ----------------------------------------
 
-.. autoclass:: circuit_brain.dproc.hpot.HarryPotterfMRI
+.. autoclass:: circuit_brain.dproc.hpot.HarryPotter
    :members:
    :undoc-members:
    :show-inheritance:

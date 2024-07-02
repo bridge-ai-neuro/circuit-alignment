@@ -6,6 +6,6 @@ This is a library for pre-processing/computing various brain-alignment datasets/
 with existing mechanistic interpretability tools such as `TransformerLens <https://transformerlensorg.github.io/TransformerLens/>`_. To a large extent right now, this documentation is for myself as I work on research at the intersections of both these areas. In the future, however, I hope that this can serve as a general library for those looking to get into research bridging the gap between language models and the brain. 
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
    
    circuit_brain 

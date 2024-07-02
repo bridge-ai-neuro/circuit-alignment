@@ -6,7 +6,6 @@ circuit\_brain.model.BrainAlignedModel
 .. autoclass:: circuit_brain.model.hooked_model.BrainAlignedLMModel
    :members:
    :undoc-members:
-   :show-inheritance:
 
 circuit\_brain.model.patching
 ------------------------------------
