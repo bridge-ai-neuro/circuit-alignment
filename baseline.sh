@@ -1,6 +1,6 @@
 #!/bin/bash
 
-models=(gpt2-xl)
+models=(gpt2-small)
 
 for mname in "${models[@]}"
 do

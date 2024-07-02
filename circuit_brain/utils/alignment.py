@@ -8,7 +8,7 @@ def per_subject_model_repr(sents, model, batch_size):
     return model.hidden_repr(sent_toks, batch_size)
 
 
-def per_subject_alignment(dataset, model_repr, subject_idx, folds, trim, ridge_cv):
+def per_subject_alignment(dataset, model_repr, subject_idx, folds, trim, ridge_cv, pca=None):
     fold_r2 = []
     for k, test_idx, train_idx in track(
         dataset.kfold(folds, trim), description=f"S{subject_idx+1}", total=folds
@@ -23,6 +23,10 @@ def per_subject_alignment(dataset, model_repr, subject_idx, folds, trim, ridge_c
         test_fmri = torch.from_numpy(test_fmri).float()
         for l in range(len(train_repr)):
             train_repr_l, test_repr_l = train_repr[l], test_repr[l]
+            if pca is not None:
+                pvar = torch.var(train_repr_l)
+                train_repr_l = pca.fit_transform(train_repr_l)
+                test_repr_l = pca.transform(test_repr_l)
             ridge_cv.fit(train_repr_l, train_fmri)
             r2 = ridge_cv.score(test_repr_l, test_fmri)
             layer_r2.append(r2.cpu().item())
@@ -31,8 +35,8 @@ def per_subject_alignment(dataset, model_repr, subject_idx, folds, trim, ridge_c
     return fold_r2
 
 
-def across_subject_alignment(dataset, model_repr, folds, trim, ridge_cv):
+def across_subject_alignment(dataset, model_repr, folds, trim, ridge_cv, pca=None):
     return [
-        per_subject_alignment(dataset, model_repr, sidx, folds, trim, ridge_cv)
+        per_subject_alignment(dataset, model_repr, sidx, folds, trim, ridge_cv, pca=pca)
         for sidx in range(len(dataset))
     ]

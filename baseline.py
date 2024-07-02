@@ -9,7 +9,6 @@ from circuit_brain.dproc import fMRIDataset
 import torch
 import numpy as np
 from rich.progress import track
-from sklearn.decomposition import PCA
 from sklearn.linear_model import RidgeCV
 
 
@@ -78,9 +77,10 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # compute brain-alignment scores
-    print(options.uniform_lam)
     ridge_cv = utils.RidgeCV(n_splits=5, lam_per_target=not options.uniform_lam)
+    pca = utils.PCA(n_components=300)
+    print(pca)
     pickle.dump(
-        utils.across_subject_alignment(hp, model_repr, 5, 10, ridge_cv),
-        open(f"data/base_align_data/{options.model_name}-br2-{ff}.pkl", "wb+"),
+        utils.across_subject_alignment(hp, model_repr, 5, 10, ridge_cv, pca=pca),
+        open(f"data/base_align_data/{options.model_name}-br2-{ff}-pca-300.pkl", "wb+"),
     )

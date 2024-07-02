@@ -120,13 +120,7 @@ class BrainAlignedLMModel:
             caches.append(c)
 
         agg_logits = torch.cat(logits, dim=0)
-        agg_cache_dict = {}
-        for k in caches[0].keys():
-            agg_cache_dict[k] = torch.cat([c[k] for c in caches], dim=0)
-
-        agg_cache = ActivationCache(agg_cache_dict, self.ht)
-
-        return agg_logits, agg_cache
+        return agg_logits, self.concat_activation_cache(caches)
 
     def resid_post(
         self,
@@ -152,3 +146,23 @@ class BrainAlignedLMModel:
             pos_chunked = accum_resid.chunk(chunk_size, axis=2)
             return torch.cat([torch.mean(c, axis=2) for c in pos_chunked], dim=-1)
         return accum_resid
+
+    @staticmethod
+    def split_activation_cache(acache: ActivationCache, batch_idxs) -> ActivationCache:
+        caches = []
+        for batch in batch_idxs:
+            caches.append(
+                ActivationCache(
+                    {k:acache[k][batch] for k in acache.keys()},
+                    acache.model
+                )
+            )
+        return caches
+
+    @staticmethod
+    def concat_activation_cache(acaches: List[ActivationCache]) -> ActivationCache:
+        model = acaches[0].model
+        agg_cache_dict = {}
+        for k in acaches[0].keys():
+            agg_cache_dict[k] = torch.cat([c[k] for c in acaches], dim=0)
+        return ActivationCache(agg_cache_dict, model)
